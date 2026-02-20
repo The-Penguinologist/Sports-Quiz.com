@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate Sports Quiz Pro</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    color:white;
+    text-align:center;
+    margin:0;
+    overflow-x:hidden;
+}
+
+.container{
+    max-width:700px;
+    margin:auto;
+    padding:20px;
+}
+
+input,button{
+    padding:12px;
+    margin:8px;
+    border-radius:8px;
+    border:none;
+    font-size:16px;
+}
+
+button{
+    background:#ffcc00;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{ background:#ffaa00; }
+
+.hidden{ display:none; }
+
+.fade{ animation: fade .4s ease; }
+
+@keyframes fade{
+from{opacity:0; transform:translateY(15px);}
+to{opacity:1; transform:translateY(0);}
+}
+
+.scoreboard{ font-size:18px; margin-top:10px; }
+
+.timer{
+    font-size:22px;
+    font-weight:bold;
+    color:#ff4444;
+}
+
+.choiceBtn{
+    display:block;
+    width:90%;
+    margin:10px auto;
+}
+
+canvas{
+    position:fixed;
+    top:0;
+    left:0;
+    pointer-events:none;
+}
+</style>
+</head>
+
+<body>
+<canvas id="confetti"></canvas>
+
+<div class="container">
+
+<h1>🏆 Ultimate Sports Quiz Pro</h1>
+
+<div id="setup">
+<input type="text" id="p1" placeholder="Player 1 Name">
+<input type="text" id="p2" placeholder="Player 2 Name">
+<br>
+<button onclick="startGame()">Start Game</button>
+</div>
+
+<div id="game" class="hidden fade">
+<h2 id="turn"></h2>
+<div class="timer">⏱ <span id="time">10</span>s</div>
+<p id="question"></p>
+<div id="answers"></div>
+<button onclick="endGame()">End Game</button>
+<div class="scoreboard">
+<p id="score"></p>
+</div>
+</div>
+
+<div id="end" class="hidden fade">
+<h2 id="winnerText"></h2>
+<p id="finalScore"></p>
+<button onclick="showReview()">Review Questions</button>
+<div id="review" style="text-align:left;margin-top:20px;"></div>
+</div>
+
+</div>
+
+<script>
+
+/* ===============================
+   MASSIVE QUESTION BANK
+================================= */
+
+const questionBank = [
+
+/* ⚽ FOOTBALL */
+
+{type:"text", q:"Who won the 2022 FIFA World Cup?", a:"argentina"},
+{type:"text", q:"Who won the 2018 FIFA World Cup?", a:"france"},
+{type:"text", q:"Who is the Premier League all-time top scorer?", a:"alan shearer"},
+{type:"text", q:"Which country has won the most World Cups?", a:"brazil"},
+{type:"text", q:"Which club does Mohamed Salah play for (2025)?", a:"liverpool"},
+{type:"text", q:"Which club does Erling Haaland play for (2025)?", a:"manchester city"},
+{type:"text", q:"Which country hosted the 2022 World Cup?", a:"qatar"},
+{type:"text", q:"Which stadium is home to Barcelona?", a:"camp nou"},
+{type:"text", q:"Who won the 2023 Champions League?", a:"manchester city"},
+{type:"text", q:"Which country won Euro 2020?", a:"italy"},
+{type:"text", q:"Who is the World Cup all-time top scorer?", a:"miroslav klose"},
+
+{type:"mc", q:"Which club has most Champions League titles?", options:["Barcelona","AC Milan","Real Madrid","Bayern Munich"], a:"Real Madrid"},
+{type:"mc", q:"Which African country has most AFCON titles?", options:["Egypt","Nigeria","Cameroon","Ghana"], a:"Egypt"},
+{type:"mc", q:"Which English club plays at Emirates Stadium?", options:["Chelsea","Arsenal","Tottenham","West Ham"], a:"Arsenal"},
+{type:"mc", q:"Who won Copa America 2021?", options:["Brazil","Argentina","Chile","Uruguay"], a:"Argentina"},
+{type:"mc", q:"Which player won Golden Boot 2022 World Cup?", options:["Messi","Mbappe","Giroud","Alvarez"], a:"Mbappe"},
+{type:"mc", q:"Which club is based in Munich?", options:["Dortmund","Bayern Munich","Leipzig","Leverkusen"], a:"Bayern Munich"},
+
+{type:"tf", q:"Brazil has won 5 World Cups.", a:true},
+{type:"tf", q:"Italy failed to qualify for 2022 World Cup.", a:true},
+{type:"tf", q:"The World Cup happens every 2 years.", a:false},
+{type:"tf", q:"Cristiano Ronaldo wore number 7 at Real Madrid.", a:true},
+{type:"tf", q:"Messi has won more Ballon d'Or awards than Ronaldo.", a:true},
+
+/* 🏀 BASKETBALL */
+
+{type:"text", q:"Who is NBA all-time leading scorer?", a:"lebron james"},
+{type:"text", q:"Which team drafted Michael Jordan?", a:"chicago bulls"},
+{type:"text", q:"Which team won NBA 2020 Championship?", a:"los angeles lakers"},
+{type:"text", q:"Which player has most NBA championships?", a:"bill russell"},
+{type:"text", q:"Which team does Stephen Curry play for?", a:"golden state warriors"},
+{type:"text", q:"Which country is Giannis from?", a:"greece"},
+{type:"text", q:"Who won NBA MVP 2023?", a:"joel embiid"},
+
+{type:"mc", q:"How many players on court per team?", options:["4","5","6","7"], a:"5"},
+{type:"mc", q:"Which team won 2022 NBA Championship?", options:["Warriors","Celtics","Heat","Bucks"], a:"Warriors"},
+{type:"mc", q:"Who scored 100 points in one NBA game?", options:["Jordan","Wilt Chamberlain","Kobe","Shaq"], a:"Wilt Chamberlain"},
+{type:"mc", q:"Which team has most NBA titles?", options:["Lakers","Celtics","Bulls","Warriors"], a:"Celtics"},
+{type:"mc", q:"Which player is from Slovenia?", options:["Doncic","Jokic","Giannis","Durant"], a:"Doncic"},
+{type:"mc", q:"Which team is based in Chicago?", options:["Heat","Bulls","Knicks","Pistons"], a:"Bulls"},
+
+{type:"tf", q:"NBA regular season has 82 games.", a:true},
+{type:"tf", q:"A 3 pointer is worth 4 points.", a:false},
+{type:"tf", q:"NBA Finals are best of 7.", a:true},
+{type:"tf", q:"Shaq played his entire career with Lakers.", a:false},
+
+/* 🏈 OTHER (LESS) */
+
+{type:"text", q:"Which country won Cricket World Cup 2019?", a:"england"},
+{type:"text", q:"Which country won Rugby World Cup 2019?", a:"south africa"},
+{type:"mc", q:"How many points is a touchdown worth?", options:["3","6","7","2"], a:"6"},
+{type:"tf", q:"Usain Bolt is Jamaican.", a:true}
+
+];
+
+/* ===============================
+   GAME LOGIC
+================================= */
+
+let players=[];
+let scores=[0,0];
+let currentPlayer=0;
+let questions=[];
+let history=[];
+let timer;
+let timeLeft=10;
+let currentQuestion;
+
+function startGame(){
+players=[
+document.getElementById("p1").value || "Player 1",
+document.getElementById("p2").value || "Player 2"
+];
+
+scores=[0,0];
+currentPlayer=0;
+history=[];
+questions=[...questionBank].sort(()=>Math.random()-0.5);
+
+document.getElementById("setup").classList.add("hidden");
+document.getElementById("game").classList.remove("hidden");
+
+nextQuestion();
+}
+
+function nextQuestion(){
+
+if(questions.length===0){
+endGame();
+return;
+}
+
+currentQuestion=questions.pop();
+
+document.getElementById("turn").innerText=players[currentPlayer]+"'s Turn — Pass the Phone";
+document.getElementById("question").innerText=currentQuestion.q;
+
+renderAnswers();
+updateScore();
+startTimer();
+}
+
+function renderAnswers(){
+const container=document.getElementById("answers");
+container.innerHTML="";
+
+if(currentQuestion.type==="text"){
+let input=document.createElement("input");
+input.placeholder="Type answer";
+input.id="textAnswer";
+container.appendChild(input);
+
+let btn=document.createElement("button");
+btn.innerText="Submit";
+btn.onclick=()=>submitAnswer(input.value);
+container.appendChild(btn);
+}
+
+if(currentQuestion.type==="mc"){
+currentQuestion.options.sort(()=>Math.random()-0.5);
+currentQuestion.options.forEach(opt=>{
+let btn=document.createElement("button");
+btn.className="choiceBtn";
+btn.innerText=opt;
+btn.onclick=()=>submitAnswer(opt);
+container.appendChild(btn);
+});
+}
+
+if(currentQuestion.type==="tf"){
+["True","False"].forEach(val=>{
+let btn=document.createElement("button");
+btn.className="choiceBtn";
+btn.innerText=val;
+btn.onclick=()=>submitAnswer(val==="True");
+container.appendChild(btn);
+});
+}
+}
+
+function startTimer(){
+timeLeft=10;
+document.getElementById("time").innerText=timeLeft;
+clearInterval(timer);
+
+timer=setInterval(()=>{
+timeLeft--;
+document.getElementById("time").innerText=timeLeft;
+
+if(timeLeft<=0){
+clearInterval(timer);
+submitAnswer(null);
+}
+},1000);
+}
+
+function submitAnswer(answer){
+
+clearInterval(timer);
+let correct=false;
+
+if(currentQuestion.type==="text"){
+if(answer && answer.trim().toLowerCase()===currentQuestion.a){
+correct=true;
+}
+}else{
+if(answer===currentQuestion.a){
+correct=true;
+}
+}
+
+if(correct) scores[currentPlayer]++;
+
+history.push({
+player:players[currentPlayer],
+question:currentQuestion.q,
+correct:currentQuestion.a,
+answer:answer,
+wasCorrect:correct
+});
+
+currentPlayer=currentPlayer===0?1:0;
+
+setTimeout(nextQuestion,400);
+}
+
+function updateScore(){
+document.getElementById("score").innerText=
+players[0]+": "+scores[0]+" | "+
+players[1]+": "+scores[1];
+}
+
+function endGame(){
+clearInterval(timer);
+document.getElementById("game").classList.add("hidden");
+document.getElementById("end").classList.remove("hidden");
+
+let winner="It's a Draw!";
+if(scores[0]>scores[1]) winner=players[0]+" Wins!";
+if(scores[1]>scores[0]) winner=players[1]+" Wins!";
+
+document.getElementById("winnerText").innerText=winner;
+document.getElementById("finalScore").innerText=
+players[0]+": "+scores[0]+" | "+
+players[1]+": "+scores[1];
+
+if(scores[0]!==scores[1]) launchConfetti();
+}
+
+function showReview(){
+const div=document.getElementById("review");
+div.innerHTML="";
+history.forEach((h,i)=>{
+div.innerHTML+=`
+<p><b>Q${i+1} (${h.player})</b><br>
+${h.question}<br>
+Your Answer: ${h.answer || "No Answer"}<br>
+Correct Answer: ${h.correct}<br>
+${h.wasCorrect?"✅":"❌"}
+</p><hr>`;
+});
+}
+
+/* CONFETTI */
+
+function launchConfetti(){
+const canvas=document.getElementById("confetti");
+const ctx=canvas.getContext("2d");
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+let pieces=[];
+for(let i=0;i<200;i++){
+pieces.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height- canvas.height,
+size:Math.random()*8+4,
+speed:Math.random()*3+2,
+color:`hsl(${Math.random()*360},100%,50%)`
+});
+}
+
+function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+pieces.forEach(p=>{
+p.y+=p.speed;
+ctx.fillStyle=p.color;
+ctx.fillRect(p.x,p.y,p.size,p.size);
+});
+requestAnimationFrame(draw);
+}
+draw();
+}
+
+</script>
+</body>
+</html>
